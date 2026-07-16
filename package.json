@@ -1,0 +1,39 @@
+{
+  "name": "feature-flow-js",
+  "version": "0.1.0",
+  "description": "Feature flags com toggles padrao, config remota, rolloutRules e ambientes.",
+  "type": "module",
+  "main": "src/index.js",
+  "module": "src/index.js",
+  "types": "src/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/types/index.d.ts",
+      "import": "./src/index.js",
+      "default": "./src/index.js"
+    },
+    "./react": {
+      "types": "./src/react/index.d.ts",
+      "import": "./src/react/index.js",
+      "default": "./src/react/index.js"
+    },
+    "./core": {
+      "types": "./src/types/index.d.ts",
+      "import": "./src/core/feature-toggles.js",
+      "default": "./src/core/feature-toggles.js"
+    }
+  },
+  "files": ["src"],
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "peerDependenciesMeta": {
+    "react": { "optional": true },
+    "react-dom": { "optional": true }
+  },
+  "keywords": ["feature-flags", "feature-toggles", "rollout", "react"],
+  "repository": "https://github.com/atirson/feature-flow-js.git",
+  "author": "Atirson Fabiano Barbosa de Oliveira <fabiano.oliveira2213@gmail.com>",
+  "license": "MIT"
+}
