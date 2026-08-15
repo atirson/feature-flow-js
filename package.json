@@ -1,39 +1,75 @@
 {
   "name": "feature-flow-js",
-  "version": "0.1.0",
-  "description": "Feature flags com toggles padrao, config remota, rolloutRules e ambientes.",
+  "version": "1.0.0",
+  "description": "A lightweight Feature Toggle library with a built-in debug UI and integrations for React, Vue, and Angular.",
   "type": "module",
-  "main": "src/index.js",
-  "module": "src/index.js",
-  "types": "src/types/index.d.ts",
+  "main": "./src/index.js",
+  "module": "./src/index.js",
+  "types": "./src/index.d.ts",
   "exports": {
     ".": {
-      "types": "./src/types/index.d.ts",
-      "import": "./src/index.js",
+      "types": "./src/index.d.ts",
       "default": "./src/index.js"
     },
     "./react": {
-      "types": "./src/react/index.d.ts",
-      "import": "./src/react/index.js",
-      "default": "./src/react/index.js"
+      "types": "./src/bindings/react/index.d.ts",
+      "default": "./src/bindings/react/index.js"
     },
-    "./core": {
-      "types": "./src/types/index.d.ts",
-      "import": "./src/core/feature-toggles.js",
-      "default": "./src/core/feature-toggles.js"
+    "./vue": {
+      "types": "./src/bindings/vue/vue.d.ts",
+      "default": "./src/bindings/vue/vue.js"
+    },
+    "./angular": {
+      "types": "./src/bindings/angular/angular.d.ts",
+      "default": "./src/bindings/angular/angular.js"
     }
   },
-  "files": ["src"],
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": [
+    "./src/core/feature-toggles.js"
+  ],
+  "scripts": {
+    "test:core": "node --test tests/*.test.mjs",
+    "test": "npm run test:core",
+    "prepublishOnly": "npm run test"
+  },
   "peerDependencies": {
-    "react": ">=18",
-    "react-dom": ">=18"
+    "react": ">=17.0.0",
+    "vue": ">=3.0.0",
+    "@angular/core": ">=12.0.0"
   },
   "peerDependenciesMeta": {
-    "react": { "optional": true },
-    "react-dom": { "optional": true }
+    "react": {
+      "optional": true
+    },
+    "vue": {
+      "optional": true
+    },
+    "@angular/core": {
+      "optional": true
+    }
   },
-  "keywords": ["feature-flags", "feature-toggles", "rollout", "react"],
-  "repository": "https://github.com/atirson/feature-flow-js.git",
+  "keywords": [
+    "feature-toggles",
+    "feature-flags",
+    "feature-management",
+    "react",
+    "vue",
+    "angular",
+    "debug-ui"
+  ],
   "author": "Atirson Fabiano Barbosa de Oliveira <fabiano.oliveira2213@gmail.com>",
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/atirson/feature-flow-js.git"
+  },
+  "bugs": {
+    "url": "https://github.com/atirson/feature-flow-js/issues"
+  },
+  "homepage": "https://github.com/atirson/feature-flow-js#readme"
 }

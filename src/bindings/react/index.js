@@ -1,4 +1,3 @@
-// src/react/index.js
 export {
   FeatureFlowProvider,
   useFeatureFlags,

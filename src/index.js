@@ -1,14 +1,7 @@
-// src/index.js
-export {
-  FeatureToggles,
-  featureToggles,
-  default as featureTogglesDefault,
-} from './core/feature-toggles.js';
+import { FeatureToggles, featureToggles } from './core/feature-toggles.js';
 
-// Exports React (só use se tiver react instalado)
-export {
-  FeatureFlowProvider,
-  useFeatureFlags,
-  useFeatureFlag,
-  FeatureGate,
-} from './react/FeatureFlowProvider.js';
+export default featureToggles;
+
+export { FeatureToggles, featureToggles };
+
+export { FeatureTogglesUI } from './ui/feature-toggles-ui.js';
