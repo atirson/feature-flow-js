@@ -1,0 +1,80 @@
+name: Prepare Release
+
+# Prepares a "Release PR" that contains only a CHANGELOG.md update.
+#
+# This workflow NEVER publishes to NPM, creates tags, or creates GitHub
+# Releases. It only inspects commits since the last tag and, if any of them
+# are release-worthy (feat/fix/perf/BREAKING CHANGE per Conventional
+# Commits), opens or updates a PR from the fixed `release/next` branch into
+# `main`. That PR is the human review gate before `release.yml` can ever run.
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: release-prepare
+  cancel-in-progress: true
+
+jobs:
+  prepare-release:
+    name: Prepare Release PR
+    runs-on: ubuntu-latest
+
+    # GitHub Actions already natively skips an entire workflow run for
+    # `push`/`pull_request` events when the HEAD commit message contains
+    # "[skip ci]" (or the "***NO_CI***" alias), so the version-bump commit
+    # created by @semantic-release/git (release.yml) will not re-trigger this
+    # job on its own. The `if:` guard below is a deliberate belt-and-suspenders
+    # check specifically for the release-preparation commit message this
+    # workflow itself produces ("chore(release): update changelog"), so a
+    # push that only updates the Release PR's changelog branch state (or any
+    # manually authored "chore(release)" commit landing on main) does not
+    # cause this job to try to prepare a release of its own release-prep
+    # commit.
+    if: >
+      !contains(github.event.head_commit.message, '[skip ci]') &&
+      !contains(github.event.head_commit.message, 'chore(release)')
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Generate/update Unreleased changelog section
+        run: node scripts/prepare-changelog.mjs
+
+      - name: Open or update Release PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore(release): update changelog"
+          branch: release/next
+          delete-branch: false
+          title: "chore(release): prepare next release"
+          labels: release
+          body: |
+            This PR was automatically prepared by the `claude-release.yml` workflow.
+
+            It contains an updated `## [Unreleased]` section in `CHANGELOG.md`,
+            generated from the Conventional Commit history since the last
+            published git tag.
+
+            Merging this PR into `main` is the ONLY action that can trigger the
+            `release.yml` publish workflow (via a `pull_request: closed` event
+            on this branch, `release/next`, with the `release` label).
+
+            No package will be published, tagged, or released until this PR is
+            reviewed and merged by a human.
+          add-paths: |
+            CHANGELOG.md

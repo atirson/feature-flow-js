@@ -1,0 +1,91 @@
+name: Release
+
+# Publishes to NPM via semantic-release.
+#
+# This workflow intentionally does NOT listen to `push`. It can only ever
+# fire when a pull request is closed, and even then only proceeds when ALL
+# three conditions below are true:
+#   - the PR was actually merged (not just closed)
+#   - the PR's head branch is the fixed `release/next` branch
+#   - the PR carries the `release` label
+# Those three conditions together mean a normal feature-branch merge can
+# never trigger a publish: only the Release PR opened/updated by
+# `claude-release.yml` (from `release/next`, labeled `release`) qualifies.
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+
+# Note on `id-token: write`: the previous workflow granted this permission
+# unconditionally, but `.releaserc.json`'s `@semantic-release/npm` plugin has
+# no `provenance` option configured, so nothing in this pipeline actually
+# consumes an OIDC token. Rather than carry an unused, unexplained permission
+# (flagged by the prior review), it has been removed here. NPM publishing
+# authentication is handled entirely via NODE_AUTH_TOKEN (`secrets.NPM_TOKEN`)
+# below. If NPM provenance is desired in the future, add
+# `"provenance": true` to the `@semantic-release/npm` plugin config in
+# `.releaserc.json` and restore `id-token: write` here at the same time.
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: release-publish
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Semantic Release
+    runs-on: ubuntu-latest
+
+    # The extra `user.login` check below is safe to rely on because
+    # `claude-release.yml` opens the Release PR using the default
+    # `secrets.GITHUB_TOKEN` (no custom PAT) via peter-evans/create-pull-request,
+    # so GitHub attributes PR authorship to `github-actions[bot]`. This closes
+    # the residual gap where a user with push access could otherwise
+    # hand-craft a `release/next` branch with the `release` label to trigger
+    # a publish of arbitrary content.
+    if: >
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.head.ref == 'release/next' &&
+      contains(github.event.pull_request.labels.*.name, 'release') &&
+      github.event.pull_request.user.login == 'github-actions[bot]'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Run tests
+        run: npm test
+
+      # Linting is intentionally not yet configured for this project (no
+      # `lint` script and no ESLint/other linter config exist in the repo).
+      # This step is a deliberate placeholder for when linting is added,
+      # not a forgotten quality gate.
+      - name: Run lint
+        run: npm run lint --if-present
+
+      - name: Run typecheck
+        run: npm run typecheck
+
+      - name: Run build
+        run: npm run build --if-present
+
+      - name: Semantic Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npx semantic-release
