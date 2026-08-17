@@ -107,7 +107,6 @@ Before requesting review, confirm:
 The maintainer reviews PRs for correctness, architecture fit, backward compatibility, and test/documentation coverage. You may be asked to split a PR, add tests, or adjust the approach to preserve compatibility — this is normal for a library with public consumers. Merging is always at the maintainer's discretion.
 
 ---
-
 ## Code of Conduct
 
 Be respectful and constructive in issues and pull requests. Assume good faith, keep discussion focused on the technical problem, and be patient — this is maintained on a best-effort basis.
