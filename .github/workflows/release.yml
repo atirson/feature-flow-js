@@ -2,30 +2,40 @@ name: Release
 
 # Publishes to NPM via semantic-release.
 #
-# This workflow intentionally does NOT listen to `push`. It can only ever
-# fire when a pull request is closed, and even then only proceeds when ALL
-# three conditions below are true:
-#   - the PR was actually merged (not just closed)
-#   - the PR's head branch is the fixed `release/next` branch
-#   - the PR carries the `release` label
-# Those three conditions together mean a normal feature-branch merge can
-# never trigger a publish: only the Release PR opened/updated by
-# `claude-release.yml` (from `release/next`, labeled `release`) qualifies.
+# IMPORTANT: semantic-release refuses to publish whenever the triggering
+# GitHub event is "pull_request" — even for the merged/closed case — because
+# its built-in CI-environment detection treats any pull_request-triggered
+# run as a validation build, not a real release, and there is no flag to
+# override this. (Confirmed directly from a real run's logs: "This run was
+# triggered by a pull request and therefore a new version won't be
+# published." A local `--dry-run --no-ci` test does NOT catch this, since
+# `--no-ci` specifically disables this exact check.)
+#
+# So this workflow triggers on `push`, which is the only event type
+# semantic-release will actually publish under. To keep the safety
+# guarantee that a normal push to main must NOT publish, the first step
+# queries the GitHub API for which pull request(s) the pushed commit is
+# associated with (GitHub's "list pull requests associated with a commit"
+# endpoint), and only proceeds if that PR was genuinely merged, came from
+# the fixed `release/next` branch, carries the `release` label, and was
+# authored by `github-actions[bot]` (the identity `claude-release.yml`'s
+# PR-opening step uses via the default `secrets.GITHUB_TOKEN`). This is
+# deliberately API-driven rather than parsing the push/merge commit message
+# text, so it works correctly regardless of merge strategy (merge commit /
+# squash / rebase) used to merge the Release PR.
 on:
-  pull_request:
-    types: [closed]
+  push:
     branches:
       - main
 
-# Note on `id-token: write`: the previous workflow granted this permission
-# unconditionally, but `.releaserc.json`'s `@semantic-release/npm` plugin has
-# no `provenance` option configured, so nothing in this pipeline actually
-# consumes an OIDC token. Rather than carry an unused, unexplained permission
-# (flagged by the prior review), it has been removed here. NPM publishing
-# authentication is handled entirely via NODE_AUTH_TOKEN (`secrets.NPM_TOKEN`)
-# below. If NPM provenance is desired in the future, add
-# `"provenance": true` to the `@semantic-release/npm` plugin config in
-# `.releaserc.json` and restore `id-token: write` here at the same time.
+# Note on `id-token: write`: `.releaserc.json`'s `@semantic-release/npm`
+# plugin has no `provenance` option configured, so nothing in this pipeline
+# consumes an OIDC token — this permission is intentionally omitted rather
+# than carried unused. NPM publishing authentication is handled entirely via
+# NODE_AUTH_TOKEN (`secrets.NPM_TOKEN`) below. If NPM provenance is desired
+# in the future, add `"provenance": true` to the `@semantic-release/npm`
+# plugin config in `.releaserc.json` and add `id-token: write` here at the
+# same time.
 permissions:
   contents: write
   issues: write
@@ -40,35 +50,47 @@ jobs:
     name: Semantic Release
     runs-on: ubuntu-latest
 
-    # The extra `user.login` check below is safe to rely on because
-    # `claude-release.yml` opens the Release PR using the default
-    # `secrets.GITHUB_TOKEN` (no custom PAT) via peter-evans/create-pull-request,
-    # so GitHub attributes PR authorship to `github-actions[bot]`. This closes
-    # the residual gap where a user with push access could otherwise
-    # hand-craft a `release/next` branch with the `release` label to trigger
-    # a publish of arbitrary content.
-    if: >
-      github.event.pull_request.merged == true &&
-      github.event.pull_request.head.ref == 'release/next' &&
-      contains(github.event.pull_request.labels.*.name, 'release') &&
-      github.event.pull_request.user.login == 'github-actions[bot]'
-
     steps:
+      - name: Check whether this push is a merged, bot-authored Release PR
+        id: gate
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          count=$(gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/pulls" \
+            --jq '[.[] | select(
+              .merged_at != null and
+              .head.ref == "release/next" and
+              .user.login == "github-actions[bot]" and
+              ([.labels[].name] | index("release") != null)
+            )] | length')
+          if [ "$count" -gt 0 ]; then
+            echo "should-release=true" >> "$GITHUB_OUTPUT"
+            echo "This push is a merged, bot-authored Release PR from release/next — proceeding."
+          else
+            echo "should-release=false" >> "$GITHUB_OUTPUT"
+            echo "Not a merged Release PR from release/next — skipping publish."
+          fi
+
       - name: Checkout repository
+        if: steps.gate.outputs.should-release == 'true'
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Setup Node.js
+        if: steps.gate.outputs.should-release == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '22'
           registry-url: https://registry.npmjs.org
 
       - name: Install dependencies
+        if: steps.gate.outputs.should-release == 'true'
         run: yarn install --frozen-lockfile
 
       - name: Run tests
+        if: steps.gate.outputs.should-release == 'true'
         run: npm test
 
       # Linting is intentionally not yet configured for this project (no
@@ -76,15 +98,19 @@ jobs:
       # This step is a deliberate placeholder for when linting is added,
       # not a forgotten quality gate.
       - name: Run lint
+        if: steps.gate.outputs.should-release == 'true'
         run: npm run lint --if-present
 
       - name: Run typecheck
+        if: steps.gate.outputs.should-release == 'true'
         run: npm run typecheck
 
       - name: Run build
+        if: steps.gate.outputs.should-release == 'true'
         run: npm run build --if-present
 
       - name: Semantic Release
+        if: steps.gate.outputs.should-release == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
