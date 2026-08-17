@@ -14,4 +14,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - use Node 22 in release workflows, quote node-version to avoid YAML float parsing.
+- trigger release.yml on push, not pull_request, so semantic-release actually publishes.
 
