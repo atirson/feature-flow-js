@@ -11,3 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - modularize core, add framework bindings and dev UI, cover with tests.
 
+### Fixed
+
+- use Node 22 in release workflows, quote node-version to avoid YAML float parsing.
+
