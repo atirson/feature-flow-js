@@ -16,7 +16,7 @@ A lightweight, framework-agnostic feature toggle / feature flag library for Java
 
 ### Demo
 
-Link Page: [Atirson Linktree](https://www.atirson.com/linktree)
+Link Page: [Atirson Linktree](https://www.atirson.com/linktree?ff-ui=true)
 
 ## Installation
 
