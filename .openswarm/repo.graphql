@@ -1,0 +1,88 @@
+# OpenSwarm Repository Graph Schema
+# 에이전트가 저장소를 이해하기 위한 정적 스키마
+# 데이터: repo-snapshot.json
+
+type Query {
+  project: Project!
+  module(id: ID!): Module
+  modules(layer: ArchLayer, language: Language): [Module!]!
+  entrypoints: [Module!]!
+  hotspots(limit: Int = 5): [Module!]!
+  untested: [Module!]!
+  circularDeps: [Cycle!]!
+  impactOf(moduleId: ID!): Impact!
+}
+
+type Project {
+  name: String!
+  path: String!
+  scannedAt: String!
+  totalModules: Int!
+  totalTests: Int!
+  languages: [LanguageBreakdown!]!
+  layers: [LayerBreakdown!]!
+  summary: ProjectSummary!
+}
+
+type Module {
+  id: ID!
+  path: String!
+  name: String!
+  type: NodeType!
+  layer: ArchLayer
+  language: Language!
+  loc: Int!
+  exports: Int!
+  imports: Int!
+  dependsOn: [Module!]!
+  dependedBy: [Module!]!
+  tests: [Module!]!
+  churnScore: Float
+  commitCount30d: Int
+  lastCommitDate: String
+  state: ModuleState
+  techDebt: Float
+  isEntrypoint: Boolean!
+  isHotspot: Boolean!
+  risk: RiskLevel!
+}
+
+type Impact {
+  direct: [Module!]!
+  transitive: [Module!]!
+  affectedTests: [Module!]!
+  scope: Scope!
+}
+
+type Cycle {
+  modules: [ID!]!
+  length: Int!
+}
+
+type ProjectSummary {
+  avgChurnScore: Float!
+  hotModules: [ID!]!
+  untestedModules: [ID!]!
+  stableCount: Int!
+  experimentalCount: Int!
+  deprecatedCount: Int!
+}
+
+type LanguageBreakdown {
+  language: Language!
+  count: Int!
+  loc: Int!
+}
+
+type LayerBreakdown {
+  layer: ArchLayer!
+  count: Int!
+  modules: [ID!]!
+}
+
+enum NodeType { PROJECT DIRECTORY MODULE TEST_FILE }
+enum Language { TYPESCRIPT PYTHON OTHER }
+enum ArchLayer { CORE AGENT ADAPTER AUTOMATION SUPPORT KNOWLEDGE ORCHESTRATION LINEAR DISCORD CLI LOCALE MEMORY TEST OTHER }
+enum ModuleState { STABLE EXPERIMENTAL DEPRECATED LEGACY PLANNED }
+enum RiskLevel { LOW MEDIUM HIGH }
+enum Scope { SMALL MEDIUM LARGE }
